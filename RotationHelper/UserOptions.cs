@@ -16,6 +16,7 @@ namespace RotationHelper
         public static int startRotation { get; set; }
         public static int stopRotation { get; set; }
         public static int minimizeWindow { get; set; }
+        public static bool hideWindow { get; set; }
 
         //Сохраняем настройки
         public static void SaveSettings()
@@ -23,6 +24,7 @@ namespace RotationHelper
             Properties.Settings.Default.StartRotation = startRotation;
             Properties.Settings.Default.StopRotation = stopRotation;
             Properties.Settings.Default.MinimizeWindow = minimizeWindow;
+            Properties.Settings.Default.HideWindow = hideWindow;
             Properties.Settings.Default.Save();
         }
 
@@ -32,6 +34,7 @@ namespace RotationHelper
             startRotation = Properties.Settings.Default.StartRotation;
             stopRotation = Properties.Settings.Default.StopRotation;
             minimizeWindow = Properties.Settings.Default.MinimizeWindow;
+            hideWindow = Properties.Settings.Default.HideWindow;
         }
     }
 }

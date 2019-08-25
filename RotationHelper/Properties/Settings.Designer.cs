@@ -58,5 +58,17 @@ namespace RotationHelper.Properties {
                 this["MinimizeWindow"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool HideWindow {
+            get {
+                return ((bool)(this["HideWindow"]));
+            }
+            set {
+                this["HideWindow"] = value;
+            }
+        }
     }
 }
