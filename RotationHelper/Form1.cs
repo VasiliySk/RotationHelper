@@ -17,13 +17,14 @@ namespace RotationHelper
     {
         public enum ActionEnum
         {
-            Клик, Двойной_клик, Пауза
+            Light_Attack, Heavy_Attack, Клавиша, Пауза
         }
 
         bool isInitStart, isInitFinish, isInitMinimize;
         private LowLevelKeyboardListener _listener; //  Слушаем нажатие клавиш
         EsoWindow esoWindow;
         IntPtr hWnd;
+        Random random;
         public static bool stopAction;
 
         public frmMain()
@@ -32,6 +33,7 @@ namespace RotationHelper
             UserOptions.LoadSettings();//Загружаем настройки программы
             stopAction = false;
             esoWindow = new EsoWindow(); //Инициируем экземпляр класса
+            random = new Random();
             isInitStart = true;
             isInitFinish = true;
             isInitMinimize = true;
@@ -159,11 +161,15 @@ namespace RotationHelper
         //Добавляем строку
         private void btnAddRow_Click(object sender, EventArgs e)
         {
+            int i = 0;
             foreach (DataGridViewCell oneCell in dgvRotation.SelectedCells)
             {
 
-                if (oneCell.Selected)
+                if (oneCell.Selected && i == 0)
+                {
                     dgvRotation.Rows.Insert(oneCell.RowIndex, 1);
+                    i++;
+                }
             }
         }
         //Автоматическая номерация строк
@@ -191,20 +197,72 @@ namespace RotationHelper
         {
             //Запуск в отдельном потоке, что бы можно было слушать нажатие клавиш в основном потоке.
             Thread MyThread1 = new Thread(delegate ()
-            {
+            {                
+                hWnd = esoWindow.FindWindow(null, "Elder Scrolls Online"); //Определяем идентификатор процесса
                 do
                 {
-                    hWnd = esoWindow.FindWindow(null, "Elder Scrolls Online"); //Определяем идентификатор процесса
-                    esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONDOWN, new IntPtr(0), new IntPtr(0));
-                    Thread.Sleep(64);
-                    esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONUP, new IntPtr(0), new IntPtr(0));
-                    Thread.Sleep(1000);
+                    for (int i=0;i<dgvRotation.RowCount-1;i++)
+                    {
+                        if (stopAction) break;
+                        switch (dgvRotation.Rows[i].Cells[0].Value)
+                        {
+                            case ActionEnum.Light_Attack:
+                                Console.WriteLine("Легкая атака");
+                                esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONDOWN, new IntPtr(0), new IntPtr(0));
+                                Thread.Sleep(64);
+                                esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONUP, new IntPtr(0), new IntPtr(0));
+                                Thread.Sleep(random.Next(200, 300));
+                                break;
+                            case ActionEnum.Heavy_Attack:
+                                Console.WriteLine("Тяжелая атака");
+                                esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONDOWN, new IntPtr(0), new IntPtr(0));
+                                Thread.Sleep(2500);
+                                esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONUP, new IntPtr(0), new IntPtr(0));
+                                Thread.Sleep(random.Next(200, 300));
+                                break;
+                            case ActionEnum.Клавиша:
+                                Console.WriteLine("Клавиша");
+                                ushort keys=9999;
+                                switch (Convert.ToString(dgvRotation.Rows[i].Cells[1].Value))
+                                {
+                                    case "1":
+                                        keys = (ushort)Keys.D1;
+                                        break;
+                                    case "2":
+                                        keys = (ushort)Keys.D2;
+                                        break;
+                                    case "3":
+                                        keys = (ushort)Keys.D3;
+                                        break;
+                                    case "4":
+                                        keys = (ushort)Keys.D4;
+                                        break;
+                                    case "5":
+                                        keys = (ushort)Keys.D5;
+                                        break;
+                                    case "~":
+                                        keys = 192;
+                                        break;
+                                }
+                                if (keys != 9999) { 
+                                    esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_KEYDOWN, new IntPtr(keys), new IntPtr(0));
+                                    Thread.Sleep(random.Next(70, 100));
+                                    esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_KEYUP, new IntPtr(keys), new IntPtr(0));
+                                    Thread.Sleep(random.Next(200, 300));
+                                }
+                                break;
+                            case ActionEnum.Пауза:
+                                Console.WriteLine("Пауза");
+                                int p = Convert.ToInt32(dgvRotation.Rows[i].Cells[1].Value);                               
+                                Thread.Sleep(p);                                
+                                break;
+                        }                        
+                    }
                 } while (!stopAction);
                 stopAction = false;
             });
             MyThread1.Start();
-            MyThread1.Join();
-            
+            MyThread1.Join();            
         }
 
         //Обработка выбора элемента из ComboBox Finish
