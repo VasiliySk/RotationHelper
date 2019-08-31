@@ -23,16 +23,19 @@ namespace RotationHelper
         bool isInitStart, isInitFinish, isInitMinimize;
         private LowLevelKeyboardListener _listener; //  Слушаем нажатие клавиш
         EsoWindow esoWindow;
+        RotationHelperFile rotationHelperFile;
         IntPtr hWnd;
         Random random;
-        public static bool stopAction;
+        public static bool stopAction, stopMultiRotation;
 
         public frmMain()
         {            
             InitializeComponent();
             UserOptions.LoadSettings();//Загружаем настройки программы
             stopAction = false;
+            stopMultiRotation = false;
             esoWindow = new EsoWindow(); //Инициируем экземпляр класса
+            rotationHelperFile = new RotationHelperFile();
             random = new Random();
             isInitStart = true;
             isInitFinish = true;
@@ -92,19 +95,26 @@ namespace RotationHelper
                 return;
             }
             if (ePress.Equals(Convert.ToString((FunctionKeys)UserOptions.minimizeWindow)))
-            {                
-                if (WindowState == FormWindowState.Normal) {
-                    Hide();
-                    WindowState = FormWindowState.Minimized;                    
-                }else                
-                {
-                    Show();
-                    WindowState = FormWindowState.Normal;                    
-                } 
+            {
+                show_unshow_window();
                 return;
             }           
         }
 
+        //Скрываем/восстанавливаем окно
+        private void show_unshow_window()
+        {
+            if (WindowState == FormWindowState.Normal)
+            {
+                Hide();
+                WindowState = FormWindowState.Minimized;
+            }
+            else
+            {
+                Show();
+                WindowState = FormWindowState.Normal;
+            }
+        }
         //Обработка выбора элемента из ComboBox Start
         private void cmbStart_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -195,9 +205,19 @@ namespace RotationHelper
         //Запускаем ротацию
         private void btnRotation_Click(object sender, EventArgs e)
         {
+            if (stopMultiRotation) return;
+            if (ckbHideWindow.Checked)
+            {
+                if (WindowState == FormWindowState.Normal)
+                {
+                    Hide();
+                    WindowState = FormWindowState.Minimized;
+                }
+            }
             //Запуск в отдельном потоке, что бы можно было слушать нажатие клавиш в основном потоке.
             Thread MyThread1 = new Thread(delegate ()
-            {                
+            {
+                stopMultiRotation = true;
                 hWnd = esoWindow.FindWindow(null, "Elder Scrolls Online"); //Определяем идентификатор процесса
                 do
                 {
@@ -260,9 +280,31 @@ namespace RotationHelper
                     }
                 } while (!stopAction);
                 stopAction = false;
+                stopMultiRotation = false;
             });
             MyThread1.Start();
             MyThread1.Join();            
+        }
+        //Создаем новый файл с ротацией
+        private void createToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            rotationHelperFile.CreateFile(dgvRotation, saveToolStripMenuItem);
+        }
+        //Сохраняем файл с ротацией
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            rotationHelperFile.SaveFile(dgvRotation);
+        }
+        //Открываем файл с ротацией
+        private void openToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            rotationHelperFile.OpenFile(openFileDialog1,dgvRotation, saveToolStripMenuItem);
+        }
+
+        //Сохраняем как... файл с ротацией
+        private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            rotationHelperFile.SaveFileAs(saveFileDialog1, dgvRotation, saveToolStripMenuItem);
         }
 
         //Обработка выбора элемента из ComboBox Finish
