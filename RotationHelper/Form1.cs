@@ -27,6 +27,7 @@ namespace RotationHelper
         IntPtr hWnd;
         Random random;
         public static bool stopAction, stopMultiRotation;
+        List<RHelper> rHelpers;
 
         public frmMain()
         {            
@@ -37,6 +38,7 @@ namespace RotationHelper
             esoWindow = new EsoWindow(); //Инициируем экземпляр класса
             rotationHelperFile = new RotationHelperFile();
             random = new Random();
+            rHelpers = new List<RHelper>();
             isInitStart = true;
             isInitFinish = true;
             isInitMinimize = true;
@@ -58,12 +60,20 @@ namespace RotationHelper
             actionColumn.Name = "Действие";
             actionColumn.DataSource = Enum.GetValues(typeof(ActionEnum));
             actionColumn.ValueType = typeof(ActionEnum);
-            actionColumn.Width = 150;
+            actionColumn.Width = 85;
             dgvRotation.Columns.Add(actionColumn);
             DataGridViewTextBoxColumn valueColumn = new DataGridViewTextBoxColumn();
             valueColumn.Name = "Значение";
-            valueColumn.Width = 140;
+            valueColumn.Width = 70;
             dgvRotation.Columns.Add(valueColumn);
+            DataGridViewTextBoxColumn timeColumn = new DataGridViewTextBoxColumn();
+            timeColumn.Name = "Время";
+            timeColumn.Width = 70;
+            dgvRotation.Columns.Add(timeColumn);
+            DataGridViewTextBoxColumn skipColumn = new DataGridViewTextBoxColumn();
+            skipColumn.Name = "Пропуск";
+            skipColumn.Width = 70;
+            dgvRotation.Columns.Add(skipColumn);
             //Сворачиваем окно в трей, если установлена соответствующая опция
             if (ckbHideWindow.Checked)
             {
@@ -163,11 +173,19 @@ namespace RotationHelper
 
             }
         }
+        
         //Тестовые функции
         private void btnTest_Click(object sender, EventArgs e)
         {
-            Console.WriteLine(dgvRotation.RowCount);
-        }
+            int rCount = dgvRotation.RowCount - 1;
+            rHelpers.Clear();
+            for (int i = 0; i < rCount; i++)
+            {
+                rHelpers.Add(new RHelper((ActionEnum)dgvRotation.Rows[i].Cells[0].Value, Convert.ToString(dgvRotation.Rows[i].Cells[1].Value), Convert.ToInt32(dgvRotation.Rows[i].Cells[2].Value), Convert.ToString(dgvRotation.Rows[i].Cells[3].Value)));
+            }
+            Console.WriteLine(rHelpers.Count);
+        }       
+
         //Добавляем строку
         private void btnAddRow_Click(object sender, EventArgs e)
         {
@@ -219,31 +237,35 @@ namespace RotationHelper
             {
                 stopMultiRotation = true;
                 hWnd = esoWindow.FindWindow(null, "Elder Scrolls Online"); //Определяем идентификатор процесса
+                int rCount = dgvRotation.RowCount - 1;
+                rHelpers.Clear();
+                for (int i = 0; i < rCount; i++)
+                {
+                    rHelpers.Add(new RHelper((ActionEnum)dgvRotation.Rows[i].Cells[0].Value,
+                                              Convert.ToString(dgvRotation.Rows[i].Cells[1].Value),
+                                              Convert.ToInt32(dgvRotation.Rows[i].Cells[2].Value),
+                                              Convert.ToString(dgvRotation.Rows[i].Cells[3].Value)));
+                }
                 do
                 {
-                    for (int i=0;i<dgvRotation.RowCount-1;i++)
+                    foreach (RHelper rHelper in rHelpers)
                     {
                         if (stopAction) break;
-                        switch (dgvRotation.Rows[i].Cells[0].Value)
+                        switch (rHelper.action)
                         {
                             case ActionEnum.Light_Attack:
-                                Console.WriteLine("Легкая атака");
-                                esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONDOWN, new IntPtr(0), new IntPtr(0));
-                                Thread.Sleep(64);
-                                esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONUP, new IntPtr(0), new IntPtr(0));
-                                Thread.Sleep(random.Next(200, 300));
+                                LightAttack();
                                 break;
                             case ActionEnum.Heavy_Attack:
                                 Console.WriteLine("Тяжелая атака");
                                 esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONDOWN, new IntPtr(0), new IntPtr(0));
                                 Thread.Sleep(2500);
                                 esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONUP, new IntPtr(0), new IntPtr(0));
-                                Thread.Sleep(random.Next(200, 300));
+                                Thread.Sleep(random.Next(400, 600));
                                 break;
-                            case ActionEnum.Клавиша:
-                                Console.WriteLine("Клавиша");
+                            case ActionEnum.Клавиша:                                
                                 ushort keys=9999;
-                                switch (Convert.ToString(dgvRotation.Rows[i].Cells[1].Value))
+                                switch (Convert.ToString(rHelper.value))
                                 {
                                     case "1":
                                         keys = (ushort)Keys.D1;
@@ -263,17 +285,36 @@ namespace RotationHelper
                                     case "~":
                                         keys = 192;
                                         break;
+                                    case "`":
+                                        keys = 192;
+                                        break;
+                                    case "ё":
+                                        keys = 192;
+                                        break;
                                 }
-                                if (keys != 9999) { 
-                                    esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_KEYDOWN, new IntPtr(keys), new IntPtr(0));
-                                    Thread.Sleep(random.Next(70, 100));
-                                    esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_KEYUP, new IntPtr(keys), new IntPtr(0));
-                                    Thread.Sleep(random.Next(200, 300));
+                                if (keys != 9999) {
+                                    if (rHelper.keyAction)
+                                    {
+                                        Console.WriteLine("Клавиша");
+                                        esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_KEYDOWN, new IntPtr(keys), new IntPtr(0));
+                                        Thread.Sleep(random.Next(70, 100));
+                                        esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_KEYUP, new IntPtr(keys), new IntPtr(0));
+                                        Thread.Sleep(random.Next(100, 200));
+                                        if (rHelper.initCountDown > 0)
+                                        {
+                                            rHelper.Start();
+                                            Console.WriteLine(rHelper.initCountDown);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        LightAttack();
+                                    }
                                 }
                                 break;
                             case ActionEnum.Пауза:
                                 Console.WriteLine("Пауза");
-                                int p = Convert.ToInt32(dgvRotation.Rows[i].Cells[1].Value);                               
+                                int p = Convert.ToInt32(rHelper.value);                               
                                 Thread.Sleep(p);                                
                                 break;
                         }                        
@@ -284,6 +325,15 @@ namespace RotationHelper
             });
             MyThread1.Start();
             MyThread1.Join();            
+        }
+
+        private void LightAttack()
+        {
+            Console.WriteLine("Легкая атака");
+            esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONDOWN, new IntPtr(0), new IntPtr(0));
+            Thread.Sleep(random.Next(64, 100));
+            esoWindow.SendMessage(hWnd, (uint)WindowMessages.WM_LBUTTONUP, new IntPtr(0), new IntPtr(0));
+            Thread.Sleep(random.Next(200, 300));
         }
         //Создаем новый файл с ротацией
         private void createToolStripMenuItem_Click(object sender, EventArgs e)
